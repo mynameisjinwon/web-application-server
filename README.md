@@ -15,9 +15,22 @@
 * 각 요구사항을 구현하는 것이 중요한 것이 아니라 구현 과정을 통해 학습한 내용을 인식하는 것이 배움에 중요하다. 
 
 ### 요구사항 1 - http://localhost:8080/index.html로 접속시 응답
-* 
+
+- 요청 url 추출해 해당하는 파일을 클라이언트에 전달하는 코드 추가
+
+```java
+// HTTP header 받아오기
+BufferedReader br = new BufferedReader(new InputStreamReader(in));
+String url = br.readLine().split(" ")[1];
+log.debug("url : {} ", url);
+
+byte[] body = Files.readAllBytes(new File("./webapp" + url).toPath());
+```
+
+- http 헤더의 첫번째 줄 두번째 요소가 url, url을 추출해 해당하는 파일을 ./webapp 폴더에서 찾아 클라이언트에 전달한다.
 
 ### 요구사항 2 - get 방식으로 회원가입
+
 * 
 
 ### 요구사항 3 - post 방식으로 회원가입
