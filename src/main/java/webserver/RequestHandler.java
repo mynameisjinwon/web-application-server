@@ -3,12 +3,15 @@ package webserver;
 import java.io.*;
 import java.net.Socket;
 import java.nio.file.Files;
+import java.util.HashMap;
 import java.util.Map;
 
+import com.sun.org.apache.xpath.internal.objects.XNull;
 import model.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import util.HttpRequestUtils;
+import util.IOUtils;
 
 public class RequestHandler extends Thread {
     private static final Logger log = LoggerFactory.getLogger(RequestHandler.class);
@@ -30,7 +33,19 @@ public class RequestHandler extends Thread {
             String httpHeader = br.readLine();
             log.debug("HTTP Header : {}", httpHeader);
 
-            String url = httpHeader.split(" ")[1];
+            Map<String, String> headerMap = new HashMap<>();
+            String line;
+            while (!"".equals(line=br.readLine())) {
+                if(line == null) break;
+                log.debug("line : {}", line);
+                String[] tokens = line.split(":");
+                headerMap.put(tokens[0], tokens[1].trim());
+            }
+
+            String[] tokens = httpHeader.split(" ");
+            String method = tokens[0];
+            String url = tokens[1];
+
             log.debug("url : {} ", url);
 
             // 요청 url 에 파라미터가 포함되어 있으면
@@ -42,10 +57,20 @@ public class RequestHandler extends Thread {
                 log.debug("params : {}", params);
 
                 // 파라미터 파싱
-                HttpRequestUtils utils = new HttpRequestUtils();
-                Map<String, String> parMap = utils.parseQueryString(params);
+                Map<String, String> parMap = HttpRequestUtils.parseQueryString(params);
 
                 // User 객체 생성
+                User user = new User(parMap.get("userId"), parMap.get("password"), parMap.get("name"), parMap.get("email"));
+                log.debug("new user : {}", user);
+            }
+
+            // Post 방식으로 회원가입 요청이 오면
+            if ("POST".equals(method) && "/user/create".equals(url)) {
+                String httpBody = IOUtils.readData(br, Integer.parseInt(headerMap.get("Content-Length")));
+                log.debug("HTTP body : {}", httpBody);
+
+                Map<String, String> parMap = HttpRequestUtils.parseQueryString(httpBody);
+
                 User user = new User(parMap.get("userId"), parMap.get("password"), parMap.get("name"), parMap.get("email"));
                 log.debug("new user : {}", user);
             }

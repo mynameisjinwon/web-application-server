@@ -54,8 +54,33 @@ log.debug("new user : {}", user);
 - 그리고 새로운 User 객체를 생성한다.
 
 ### 요구사항 3 - post 방식으로 회원가입
-* 
+* Post 방식으로 요청이 오면 데이터는 url 이 아닌 HTTP Body 로 전달이 된다.
+* HTTP body 로 전달된 데이터는 HTTP header 이후 한줄 다음부터 시작된다.
+* HTTP body 데이터를 읽기위해 Content-Length 값을 알아야한다.
+* Content-Length 값을 적시에 추출하기 위해 headerMap 이라는 맵을 생성했다.
+```java
+Map<String, String> headerMap = new HashMap<>();
+String line;
+while (!"".equals(line=br.readLine())) {
+    if(line == null) break;
+    log.debug("line : {}", line);
+    String[] tokens = line.split(":");
+    headerMap.put(tokens[0], tokens[1].trim());
+} 
+```
+* HTTP body 에 있는 회원 정보를 읽어 새로운 User 객체를 생성했다.
+```java
+// Post 방식으로 회원가입 요청이 오면
+if ("POST".equals(method) && "/user/create".equals(url)) {
+    String httpBody = IOUtils.readData(br, Integer.parseInt(headerMap.get("Content-Length")));
+    log.debug("HTTP body : {}", httpBody);
 
+    Map<String, String> parMap = HttpRequestUtils.parseQueryString(httpBody);
+
+    User user = new User(parMap.get("userId"), parMap.get("password"), parMap.get("name"), parMap.get("email"));
+    log.debug("new user : {}", user);
+}
+```
 ### 요구사항 4 - redirect 방식으로 이동
 * 
 
