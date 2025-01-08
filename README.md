@@ -30,8 +30,28 @@ byte[] body = Files.readAllBytes(new File("./webapp" + url).toPath());
 - http 헤더의 첫번째 줄 두번째 요소가 url, url을 추출해 해당하는 파일을 ./webapp 폴더에서 찾아 클라이언트에 전달한다.
 
 ### 요구사항 2 - get 방식으로 회원가입
+- url 과 함께 전달된 파라미터들을 파싱해 User 객체로 생성
+```java
+// 요청 url 에 파라미터가 포함되어 있으면
+if (url.contains("?")) {
+        int index = url.indexOf("?");
+        String params = url.substring(index + 1);
+        url = url.substring(0, index);
+        log.debug("url : {}", url);
+        log.debug("params : {}", params);
 
-* 
+        // 파라미터 파싱
+        HttpRequestUtils utils = new HttpRequestUtils();
+        Map<String, String> parMap = utils.parseQueryString(params);
+
+// User 객체 생성
+User user = new User(parMap.get("userId"), parMap.get("password"), parMap.get("name"), parMap.get("email"));
+log.debug("new user : {}", user);
+} 
+```
+- url과 파라미터를 구분하는 '?'를 기준으로 문자열을 ulr, param 으로 나눈뒤 
+- HttpRequestUtils 의 parseQueryString()을 사용해 파싱한다. 
+- 그리고 새로운 User 객체를 생성한다.
 
 ### 요구사항 3 - post 방식으로 회원가입
 * 
