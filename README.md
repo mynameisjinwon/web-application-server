@@ -82,7 +82,38 @@ if ("POST".equals(method) && "/user/create".equals(url)) {
 }
 ```
 ### 요구사항 4 - redirect 방식으로 이동
-* 
+* Redirect 를 위해선 응답 헤더의 status 코드를 302로 전달해야한다. 
+* `HTTP/1.1 302 Redirect`
+* Location 을 지정해 원하는 url 로 리다이렉트 시킨다. 
+```java
+ // Post 방식으로 회원가입 요청이 오면
+if ("POST".equals(method) && "/user/create".equals(url)) {
+    String httpBody = IOUtils.readData(br, Integer.parseInt(headerMap.get("Content-Length")));
+    log.debug("HTTP body : {}", httpBody);
+
+    Map<String, String> parMap = HttpRequestUtils.parseQueryString(httpBody);
+
+    User user = new User(parMap.get("userId"), parMap.get("password"), parMap.get("name"), parMap.get("email"));
+    log.debug("new user : {}", user);
+    
+    //index.html 로 리다이렉트
+    response302Header(dos, "/index.html");
+    return;
+
+}
+```
+```java
+private void response302Header(DataOutputStream dos, String location) {
+    try {
+        dos.writeBytes("HTTP/1.1 302 Redirect \r\n");
+        dos.writeBytes("Location : " + location);
+        dos.writeBytes("\r\n");
+    } catch (IOException e) {
+        log.error(e.getMessage());
+    }
+}
+```
+* 회원가입을 완료하면 * 응답 데이터로 전달할 것이 없으니 /index.html 로 리다이렉트 후 종료한다.
 
 ### 요구사항 5 - cookie
 * 

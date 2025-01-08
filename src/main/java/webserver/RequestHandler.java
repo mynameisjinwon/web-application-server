@@ -30,6 +30,8 @@ public class RequestHandler extends Thread {
             // TODO 사용자 요청에 대한 처리는 이 곳에 구현하면 된다.
             // HTTP header 받아오기
             BufferedReader br = new BufferedReader(new InputStreamReader(in));
+            DataOutputStream dos = new DataOutputStream(out);
+
             String httpHeader = br.readLine();
             log.debug("HTTP Header : {}", httpHeader);
 
@@ -37,7 +39,6 @@ public class RequestHandler extends Thread {
             String line;
             while (!"".equals(line=br.readLine())) {
                 if(line == null) break;
-                log.debug("line : {}", line);
                 String[] tokens = line.split(":");
                 headerMap.put(tokens[0], tokens[1].trim());
             }
@@ -45,8 +46,6 @@ public class RequestHandler extends Thread {
             String[] tokens = httpHeader.split(" ");
             String method = tokens[0];
             String url = tokens[1];
-
-            log.debug("url : {} ", url);
 
             // 요청 url 에 파라미터가 포함되어 있으면
             if (url.contains("?")) {
@@ -73,11 +72,16 @@ public class RequestHandler extends Thread {
 
                 User user = new User(parMap.get("userId"), parMap.get("password"), parMap.get("name"), parMap.get("email"));
                 log.debug("new user : {}", user);
+
+                //index.html 로 리다이렉트
+                response302Header(dos, "/index.html");
+                return;
+
             }
 
             byte[] body = Files.readAllBytes(new File("./webapp" + url).toPath());
 
-            DataOutputStream dos = new DataOutputStream(out);
+
 //            byte[] body = "Hello World".getBytes();
             response200Header(dos, body.length);
             responseBody(dos, body);
@@ -96,7 +100,15 @@ public class RequestHandler extends Thread {
             log.error(e.getMessage());
         }
     }
-
+    private void response302Header(DataOutputStream dos, String location) {
+        try {
+            dos.writeBytes("HTTP/1.1 302 Redirect \r\n");
+            dos.writeBytes("Location : " + location);
+            dos.writeBytes("\r\n");
+        } catch (IOException e) {
+            log.error(e.getMessage());
+        }
+    }
     private void responseBody(DataOutputStream dos, byte[] body) {
         try {
             dos.write(body, 0, body.length);
