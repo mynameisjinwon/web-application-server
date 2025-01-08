@@ -116,7 +116,46 @@ private void response302Header(DataOutputStream dos, String location) {
 * 회원가입을 완료하면 * 응답 데이터로 전달할 것이 없으니 /index.html 로 리다이렉트 후 종료한다.
 
 ### 요구사항 5 - cookie
-* 
+* 응답 헤더에 Set-Cookie 속성을 추가해 Cookie를 생성할 수 있다.
+* Cookie 의 Path 를 설정하면 Cookie 의 적용 범위를 설정할 수 있다.
+* /user/login.html. 페이지에서 쿠키를 설정하면 /user 의 하위 경로에서만 적용된다.
+* /index.html 에서는 적용되지 않는 문제가 있었다.
+* Path=/ 설정을 추가해 웹사이트의 모든 경로에서 쿠키가 적용되도록했다.
+```java
+if ("/user/login".equals(url)) {
+    String loginId = parMap.get("userId");
+    User userById = DataBase.findUserById(loginId);
+
+    // 회원가입되지 않은 아이디인경우
+    if (userById == null) {
+    response302Header(dos, "/user/login_failed.html");
+    log.debug("존재하지 않는 회원");
+    return;
+    }
+
+    // 비밀번호가 일치하지 않는 경우
+    if (!userById.getPassword().equals(parMap.get("password"))) {
+    response302Header(dos, "/user/login_failed.html");
+    log.debug("비밀번호 불일치 ");
+    return;
+    }
+
+    //비밀번호가 일치하면 로그인 성공
+    response302HeaderLoginSuccess(dos, "/index.html");
+    log.debug("로그인 성공");
+}
+
+private void response302HeaderLoginSuccess(DataOutputStream dos, String location) {
+    try {
+        dos.writeBytes("HTTP/1.1 302 Redirect \r\n");
+        dos.writeBytes("Set-Cookie : logined=true; Path=/\r\n");
+        dos.writeBytes("Location : " + location + "\r\n");
+        dos.writeBytes("\r\n");
+    } catch (IOException e) {
+        log.error(e.getMessage());
+    }
+}
+```
 
 ### 요구사항 6 - stylesheet 적용
 * 

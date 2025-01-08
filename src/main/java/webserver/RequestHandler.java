@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import com.sun.org.apache.xpath.internal.objects.XNull;
+import db.DataBase;
 import model.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,6 +44,10 @@ public class RequestHandler extends Thread {
                 headerMap.put(tokens[0], tokens[1].trim());
             }
 
+            if (headerMap.containsKey("Cookie")) {
+                log.debug("Cookie : {} ", headerMap.get("Cookie"));
+            }
+
             String[] tokens = httpHeader.split(" ");
             String method = tokens[0];
             String url = tokens[1];
@@ -63,28 +68,57 @@ public class RequestHandler extends Thread {
                 log.debug("new user : {}", user);
             }
 
-            // Post 방식으로 회원가입 요청이 오면
-            if ("POST".equals(method) && "/user/create".equals(url)) {
+            String cookie = null;
+
+            // Post 방식으로 요청이 오면
+            if ("POST".equals(method)) {
+                // Http body 에서 데이터를 읽어온다.
                 String httpBody = IOUtils.readData(br, Integer.parseInt(headerMap.get("Content-Length")));
                 log.debug("HTTP body : {}", httpBody);
 
+                //읽어온 데이터를 키, 값 형식으로 파싱한다.
                 Map<String, String> parMap = HttpRequestUtils.parseQueryString(httpBody);
 
-                User user = new User(parMap.get("userId"), parMap.get("password"), parMap.get("name"), parMap.get("email"));
-                log.debug("new user : {}", user);
+                if ("/user/create".equals(url)) {
+                    User newUser = new User(parMap.get("userId"), parMap.get("password"), parMap.get("name"), parMap.get("email"));
+                    //db 에 저장
+                    DataBase.addUser(newUser);
+                    log.debug("회원가입 성공! new user : {}", newUser);
 
-                //index.html 로 리다이렉트
-                response302Header(dos, "/index.html");
-                return;
+                    //index.html 로 리다이렉트
+                    response302Header(dos, "/index.html");
+                    return;
+                }
 
+                if ("/user/login".equals(url)) {
+                    String loginId = parMap.get("userId");
+                    User userById = DataBase.findUserById(loginId);
+
+                    // 회원가입되지 않은 아이디인경우
+                    if (userById == null) {
+                        response302Header(dos, "/user/login_failed.html");
+                        log.debug("존재하지 않는 회원");
+                        return;
+                    }
+
+                    // 비밀번호가 일치하지 않는 경우
+                    if (!userById.getPassword().equals(parMap.get("password"))) {
+                        response302Header(dos, "/user/login_failed.html");
+                        log.debug("비밀번호 불일치 ");
+                        return;
+                    }
+
+                    //비밀번호가 일치하면 로그인 성공
+                    response302HeaderLoginSuccess(dos, "/index.html");
+                    log.debug("로그인 성공");
+                }
             }
 
             byte[] body = Files.readAllBytes(new File("./webapp" + url).toPath());
 
-
-//            byte[] body = "Hello World".getBytes();
             response200Header(dos, body.length);
             responseBody(dos, body);
+
         } catch (IOException e) {
             log.error(e.getMessage());
         }
@@ -100,6 +134,19 @@ public class RequestHandler extends Thread {
             log.error(e.getMessage());
         }
     }
+
+    private void response200Header(DataOutputStream dos, int lengthOfBodyContent, String Cookie) {
+        try {
+            dos.writeBytes("HTTP/1.1 200 OK \r\n");
+            dos.writeBytes("Content-Type: text/html;charset=utf-8\r\n");
+            dos.writeBytes("Content-Length: " + lengthOfBodyContent + "\r\n");
+            dos.writeBytes("Set-Cookie: " + Cookie + "\r\n");
+            dos.writeBytes("\r\n");
+        } catch (IOException e) {
+            log.error(e.getMessage());
+        }
+    }
+
     private void response302Header(DataOutputStream dos, String location) {
         try {
             dos.writeBytes("HTTP/1.1 302 Redirect \r\n");
@@ -109,6 +156,18 @@ public class RequestHandler extends Thread {
             log.error(e.getMessage());
         }
     }
+
+    private void response302HeaderLoginSuccess(DataOutputStream dos, String location) {
+        try {
+            dos.writeBytes("HTTP/1.1 302 Redirect \r\n");
+            dos.writeBytes("Set-Cookie : logined=true; Path=/\r\n");
+            dos.writeBytes("Location : " + location + "\r\n");
+            dos.writeBytes("\r\n");
+        } catch (IOException e) {
+            log.error(e.getMessage());
+        }
+    }
+
     private void responseBody(DataOutputStream dos, byte[] body) {
         try {
             dos.write(body, 0, body.length);
