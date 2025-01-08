@@ -156,8 +156,34 @@ private void response302HeaderLoginSuccess(DataOutputStream dos, String location
     }
 }
 ```
+### 요구사항 6 - 사용자 목록 출력
+* lgoined 쿠키 값이 true 일 경우 /user/list 에 접근하면 유저 목록을 출력한다.
+* 그렇지 않으면 login.html 로 리다이렉트한다.
+* logined 쿠키 값을 불리언으로 변환해 false 일 경우 login.html 로 리다이렉트, true 인 경우 유저 목록을 보여주도록 했다.
+```java
+Boolean isLogined = false;
+if (headerMap.containsKey("Cookie")) {
+    log.debug("Cookie : {} ", headerMap.get("Cookie"));
+    Map<String, String> cookie = HttpRequestUtils.parseCookies(headerMap.get("Cookie"));
+    log.debug("cookie : {} ", cookie);
+    if (cookie.containsKey("logined")) {
+        isLogined = Boolean.parseBoolean(cookie.get("logined"));
+        log.debug("isLogined : {}", isLogined);
+    }
+}
 
-### 요구사항 6 - stylesheet 적용
+// /user/list 에 접속했을 때
+if ("/user/list".equals(url)) {
+    // 로그인 안했으면 
+    if (!isLogined) {
+        response302Header(dos, "/user/login.html");
+        return;
+}
+    // 로그인 했으면
+    response302Header(dos, "/user/list.html");
+}
+```
+### 요구사항 7 - stylesheet 적용
 * 
 
 ### heroku 서버에 배포 후
