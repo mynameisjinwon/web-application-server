@@ -184,7 +184,29 @@ if ("/user/list".equals(url)) {
 }
 ```
 ### 요구사항 7 - stylesheet 적용
-* 
+* css 파일을 적용시키기 위해선 http header 에 해당 파일이 css 파일이라는것을 명시해줘야한다.
+* `Content-type : text/css` 이렇게 해서 할 수 있다.
+```java
+ // css 적용
+if (url.contains("css")) {
+    log.debug("css response");
+    byte[] body = Files.readAllBytes(new File("./webapp" + url).toPath());
+    response200HeaderCss(dos, body.length );
+    responseBody(dos, body);
+    return;
+}
+
+private void response200HeaderCss(DataOutputStream dos, int lengthOfBodyContent) {
+    try {
+        dos.writeBytes("HTTP/1.1 200 OK \r\n");
+        dos.writeBytes("Content-Type: text/css \r\n");
+        dos.writeBytes("Content-Length: " + lengthOfBodyContent + "\r\n");
+        dos.writeBytes("\r\n");
+    } catch (IOException e) {
+        log.error(e.getMessage());
+    }
+}
+```
 
 ### heroku 서버에 배포 후
 * 

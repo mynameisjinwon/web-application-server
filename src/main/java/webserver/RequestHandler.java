@@ -59,6 +59,21 @@ public class RequestHandler extends Thread {
             String method = tokens[0];
             String url = tokens[1];
 
+            // url 이 없으면 index.html 로 리다이렉트
+            if ("/".equals(url)) {
+                response302Header(dos, "/index.html");
+                return;
+            }
+
+            // css 적용
+            if (url.contains("css")) {
+                log.debug("css response");
+                byte[] body = Files.readAllBytes(new File("./webapp" + url).toPath());
+                response200HeaderCss(dos, body.length );
+                responseBody(dos, body);
+                return;
+            }
+
             // 요청 url 에 파라미터가 포함되어 있으면
             if (url.contains("?")) {
                 int index = url.indexOf("?");
@@ -151,6 +166,17 @@ public class RequestHandler extends Thread {
         try {
             dos.writeBytes("HTTP/1.1 200 OK \r\n");
             dos.writeBytes("Content-Type: text/html;charset=utf-8\r\n");
+            dos.writeBytes("Content-Length: " + lengthOfBodyContent + "\r\n");
+            dos.writeBytes("\r\n");
+        } catch (IOException e) {
+            log.error(e.getMessage());
+        }
+    }
+
+    private void response200HeaderCss(DataOutputStream dos, int lengthOfBodyContent) {
+        try {
+            dos.writeBytes("HTTP/1.1 200 OK \r\n");
+            dos.writeBytes("Content-Type: text/css \r\n");
             dos.writeBytes("Content-Length: " + lengthOfBodyContent + "\r\n");
             dos.writeBytes("\r\n");
         } catch (IOException e) {
