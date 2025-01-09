@@ -6,3 +6,6 @@
 /.idea
 *.iml
 .DS_Store
+src/test/resources/Http_GET.txt
+src/test/resources/Http_Post.txt
+src/test/java/webserver/HttpRequestTest.java
