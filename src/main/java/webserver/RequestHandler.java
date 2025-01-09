@@ -18,6 +18,7 @@ public class RequestHandler extends Thread {
     private static final Logger log = LoggerFactory.getLogger(RequestHandler.class);
 
     private Socket connection;
+    private HttpRequest request;
 
     public RequestHandler(Socket connectionSocket) {
         this.connection = connectionSocket;
@@ -29,44 +30,41 @@ public class RequestHandler extends Thread {
 
         try (InputStream in = connection.getInputStream(); OutputStream out = connection.getOutputStream()) {
             // TODO 사용자 요청에 대한 처리는 이 곳에 구현하면 된다.
-            // HTTP header 받아오기
+
             BufferedReader br = new BufferedReader(new InputStreamReader(in));
             DataOutputStream dos = new DataOutputStream(out);
 
-            String httpHeader = br.readLine();
-            log.debug("HTTP Header : {}", httpHeader);
+            // HTTP Header 를 관리하는 별도의 클래스 HttpRequest
+            request = new HttpRequest(in);
+            String url = request.getPath();
+            String method = request.getMethod();
 
-            Map<String, String> headerMap = new HashMap<>();
-            String line;
-            while (!"".equals(line=br.readLine())) {
-                if(line == null) break;
-                String[] tokens = line.split(":");
-                headerMap.put(tokens[0], tokens[1].trim());
-            }
+//            Map<String, String> headerMap = new HashMap<>();
+//            String line;
+//            while (!"".equals(line=br.readLine())) {
+//                if(line == null) break;
+//                String[] tokens = line.split(":");
+//                headerMap.put(tokens[0], tokens[1].trim());
+//            }
 
             Boolean isLogined = false;
-            if (headerMap.containsKey("Cookie")) {
-                log.debug("Cookie : {} ", headerMap.get("Cookie"));
-                Map<String, String> cookie = HttpRequestUtils.parseCookies(headerMap.get("Cookie"));
-                log.debug("cookie : {} ", cookie);
+            if (request.getHeader("Cookie") != null) {
+                log.debug("Cookie : {} ", request.getHeader("Cookie"));
+                Map<String, String> cookie = HttpRequestUtils.parseCookies(request.getHeader("Cookie"));
                 if (cookie.containsKey("logined")) {
                     isLogined = Boolean.parseBoolean(cookie.get("logined"));
                     log.debug("isLogined : {}", isLogined);
                 }
             }
 
-            String[] tokens = httpHeader.split(" ");
-            String method = tokens[0];
-            String url = tokens[1];
-
             // url 이 없으면 index.html 로 리다이렉트
-            if ("/".equals(url)) {
+            if ("/".equals(request.getPath()) || "".equals(request.getPath()) || request.getPath() == null) {
                 response302Header(dos, "/index.html");
                 return;
             }
 
             // css 적용
-            if (url.contains("css")) {
+            if (url.endsWith("css")) {
                 log.debug("css response");
                 byte[] body = Files.readAllBytes(new File("./webapp" + url).toPath());
                 response200HeaderCss(dos, body.length );
@@ -74,36 +72,21 @@ public class RequestHandler extends Thread {
                 return;
             }
 
-            // 요청 url 에 파라미터가 포함되어 있으면
+            // 요청 url 에 파라미터가 포함되어 있으면 쿼리스트링 파싱
             if (url.contains("?")) {
-                int index = url.indexOf("?");
-                String params = url.substring(index + 1);
-                url = url.substring(0, index);
-                log.debug("url : {}", url);
-                log.debug("params : {}", params);
-
-                // 파라미터 파싱
-                Map<String, String> parMap = HttpRequestUtils.parseQueryString(params);
-
                 // User 객체 생성
-                User user = new User(parMap.get("userId"), parMap.get("password"), parMap.get("name"), parMap.get("email"));
+                User user = new User(request.getParameter("userId"), request.getParameter("password"),
+                        request.getParameter("name"), request.getParameter("email"));
                 log.debug("new user : {}", user);
             }
 
-            String cookie = null;
-
             // Post 방식으로 요청이 오면
             if ("POST".equals(method)) {
-                // Http body 에서 데이터를 읽어온다.
-                String httpBody = IOUtils.readData(br, Integer.parseInt(headerMap.get("Content-Length")));
-                log.debug("HTTP body : {}", httpBody);
-
-                //읽어온 데이터를 키, 값 형식으로 파싱한다.
-                Map<String, String> parMap = HttpRequestUtils.parseQueryString(httpBody);
 
                 // 회원 가입
                 if ("/user/create".equals(url)) {
-                    User newUser = new User(parMap.get("userId"), parMap.get("password"), parMap.get("name"), parMap.get("email"));
+                    User newUser = new User(request.getParameter("userId"), request.getParameter("password"),
+                            request.getParameter("name"), request.getParameter("email"));
                     //db 에 저장
                     DataBase.addUser(newUser);
                     log.debug("회원가입 성공! new user : {}", newUser);
@@ -115,7 +98,12 @@ public class RequestHandler extends Thread {
 
                 // 로그인
                 if ("/user/login".equals(url)) {
-                    String loginId = parMap.get("userId");
+                    String loginId = request.getParameter("userId");
+                    if (loginId == null) {
+                        response302Header(dos, "/user/login_failed.html");
+                        log.debug("아이디 is null");
+                        return;
+                    }
                     User userById = DataBase.findUserById(loginId);
 
                     // 회원가입되지 않은 아이디인경우
@@ -126,7 +114,7 @@ public class RequestHandler extends Thread {
                     }
 
                     // 비밀번호가 일치하지 않는 경우
-                    if (!userById.getPassword().equals(parMap.get("password"))) {
+                    if (!userById.getPassword().equals(request.getParameter("password"))) {
                         response302Header(dos, "/user/login_failed.html");
                         log.debug("비밀번호 불일치 ");
                         return;
