@@ -8,16 +8,14 @@ import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Files;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
 
 public class HttpResponse {
     private static final Logger log = LoggerFactory.getLogger(HttpResponse.class);
 
-    private DataOutputStream dos;
-    private Map<String, String> headerMap = new HashMap<>();
+    private final DataOutputStream dos;
+    private Map<String, String> headers = new HashMap<>();
 
     public HttpResponse(OutputStream outputStream) {
         dos = new DataOutputStream(outputStream);
@@ -33,8 +31,12 @@ public class HttpResponse {
                 contentType = "text/css";
             }
 
+            if (path.endsWith("js")) {
+                contentType = "application/javascript";
+            }
+
             dos.writeBytes("HTTP/1.1 200 OK \r\n");
-            if(!headerMap.isEmpty()) {
+            if(!headers.isEmpty()) {
                 sendHeader();
             }
             dos.writeBytes("Content-Type: " + contentType +";charset=utf-8 \r\n");
@@ -63,13 +65,13 @@ public class HttpResponse {
 //    }
 
     public void addHeader(String fieldName, String value) {
-        headerMap.put(fieldName, value);
+        headers.put(fieldName, value);
     }
 
     public void sendRedirect(String Location) {
         try {
             dos.writeBytes("HTTP/1.1 302 Redirect\r\n");
-            if(!headerMap.isEmpty()) {
+            if(!headers.isEmpty()) {
                 sendHeader();
             }
             dos.writeBytes("Location: " + Location + "\r\n");
@@ -94,8 +96,8 @@ public class HttpResponse {
     }
 
     private void sendHeader() throws IOException {
-        for (String key : headerMap.keySet()) {
-            dos.writeBytes(key + ": " + headerMap.get(key) + "\r\n");
+        for (String key : headers.keySet()) {
+            dos.writeBytes(key + ": " + headers.get(key) + "\r\n");
         }
     }
 }
