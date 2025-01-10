@@ -3,10 +3,14 @@ package webserver;
 import java.io.*;
 import java.net.Socket;
 import java.nio.file.Files;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.sun.org.apache.xpath.internal.objects.XNull;
+import controller.Controller;
+import controller.CreateUserController;
+import controller.LoginController;
+import controller.UserListController;
 import db.DataBase;
 import model.User;
 import org.slf4j.Logger;
@@ -19,6 +23,7 @@ public class RequestHandler extends Thread {
 
     private Socket connection;
     private HttpRequest request;
+    private HttpResponse response;
 
     public RequestHandler(Socket connectionSocket) {
         this.connection = connectionSocket;
@@ -27,7 +32,6 @@ public class RequestHandler extends Thread {
     public void run() {
         log.debug("New Client Connect! Connected IP : {}, Port : {}", connection.getInetAddress(),
                 connection.getPort());
-
         try (InputStream in = connection.getInputStream(); OutputStream out = connection.getOutputStream()) {
             // TODO 사용자 요청에 대한 처리는 이 곳에 구현하면 된다.
 
@@ -36,6 +40,9 @@ public class RequestHandler extends Thread {
 
             // HTTP Header 를 관리하는 별도의 클래스 HttpRequest
             request = new HttpRequest(in);
+            // HTTP response 를 처리하는 별도의 클래스 HttpResponse
+            response = new HttpResponse(out);
+
             String url = request.getPath();
             String method = request.getMethod();
 
@@ -47,6 +54,33 @@ public class RequestHandler extends Thread {
 //                headerMap.put(tokens[0], tokens[1].trim());
 //            }
 
+            Map<String, Controller> controllerMap = new HashMap<>();
+            controllerMap.put("/user/create", new CreateUserController());
+            controllerMap.put("/user/login", new LoginController());
+            controllerMap.put("/user/list", new UserListController());
+
+            if ("/".equals(url)) {
+                log.debug("url : {} redirect to /index.html!", url);
+                response.sendRedirect("/index.html");
+                return;
+            }
+
+            if (url.endsWith("logout")) {
+                log.debug("로그아웃한다이다");
+                response.addHeader("Set-Cookie", "logined=false;Path=/");
+                response.sendRedirect("/index.html");
+                return;
+            }
+
+            if (controllerMap.get(url) == null) {
+                log.debug("no controllers were called, url : {}", url);
+                response.forward(url);
+                return;
+            }
+
+            log.debug("controller is called : {}", controllerMap.get(url));
+            controllerMap.get(url).service(request, response);
+/*
             Boolean isLogined = false;
             if (request.getHeader("Cookie") != null) {
                 log.debug("Cookie : {} ", request.getHeader("Cookie"));
@@ -59,18 +93,18 @@ public class RequestHandler extends Thread {
 
             // url 이 없으면 index.html 로 리다이렉트
             if ("/".equals(request.getPath()) || "".equals(request.getPath()) || request.getPath() == null) {
-                response302Header(dos, "/index.html");
+                response.sendRedirect("/index.html");
                 return;
             }
 
             // css 적용
-            if (url.endsWith("css")) {
-                log.debug("css response");
-                byte[] body = Files.readAllBytes(new File("./webapp" + url).toPath());
-                response200HeaderCss(dos, body.length );
-                responseBody(dos, body);
-                return;
-            }
+//            if (url.endsWith("css")) {
+//                log.debug("css response");
+//                byte[] body = Files.readAllBytes(new File("./webapp" + url).toPath());
+//                response200HeaderCss(dos, body.length );
+//                responseBody(dos, body);
+//                return;
+//            }
 
             // 요청 url 에 파라미터가 포함되어 있으면 쿼리스트링 파싱
             if (url.contains("?")) {
@@ -92,7 +126,7 @@ public class RequestHandler extends Thread {
                     log.debug("회원가입 성공! new user : {}", newUser);
 
                     //index.html 로 리다이렉트
-                    response302Header(dos, "/index.html");
+                    response.sendRedirect("/index.html");
                     return;
                 }
 
@@ -100,7 +134,7 @@ public class RequestHandler extends Thread {
                 if ("/user/login".equals(url)) {
                     String loginId = request.getParameter("userId");
                     if (loginId == null) {
-                        response302Header(dos, "/user/login_failed.html");
+                        response.sendRedirect("/user/login_failed.html");
                         log.debug("아이디 is null");
                         return;
                     }
@@ -108,46 +142,62 @@ public class RequestHandler extends Thread {
 
                     // 회원가입되지 않은 아이디인경우
                     if (userById == null) {
-                        response302Header(dos, "/user/login_failed.html");
+                        response.sendRedirect("/user/login_failed.html");
                         log.debug("존재하지 않는 회원");
                         return;
                     }
 
                     // 비밀번호가 일치하지 않는 경우
                     if (!userById.getPassword().equals(request.getParameter("password"))) {
-                        response302Header(dos, "/user/login_failed.html");
+                        response.sendRedirect("/user/login_failed.html");
                         log.debug("비밀번호 불일치 ");
                         return;
                     }
 
                     //비밀번호가 일치하면 로그인 성공
-                    response302HeaderLoginSuccess(dos, "/index.html");
+                    response.addHeader("Set-Cookie", "logined=true; Path=/");
+                    response.sendRedirect("/index.html");
                     log.debug("로그인 성공");
                 }
             }
             // 로그아웃
             if ("/user/logout".equals(url)) {
-                response302HeaderLogout(dos, "/index.html");
+                response.addHeader("Set-Cookie", "logined=false; Path=/");
+                response.sendRedirect("/index.html");
             }
 
             // /user/list 에 접속했을 때
             if ("/user/list".equals(url)) {
                 if (!isLogined) {
-                    response302Header(dos, "/user/login.html");
+                    response.sendRedirect("/user/login.html");
                     return;
                 }
 
-                response302Header(dos, "/user/list.html");
+                response.responseBody(getUserListTable());
             }
 
-            byte[] body = Files.readAllBytes(new File("./webapp" + url).toPath());
-
-            response200Header(dos, body.length);
-            responseBody(dos, body);
+            response.forward(request.getPath());
+ */
 
         } catch (IOException e) {
             log.error(e.getMessage());
         }
+    }
+
+    private byte[] getUserListTable() {
+        StringBuffer sb = new StringBuffer();
+        Collection<User> users = DataBase.findAll();
+        sb.append("<table border=1>");
+        for (User user : users) {
+            sb.append("<tr>");
+            sb.append("<td>" + user.getUserId() + "</td>");
+            sb.append("<td>" + user.getName() + "</td>");
+            sb.append("<td>" + user.getEmail() + "</td>");
+            sb.append("</tr>");
+        }
+        sb.append("</table>");
+
+        return sb.toString().getBytes();
     }
 
     private void response200Header(DataOutputStream dos, int LengthOfBodyContent) {

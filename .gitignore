@@ -9,3 +9,5 @@
 src/test/resources/Http_GET.txt
 src/test/resources/Http_Post.txt
 src/test/java/webserver/HttpRequestTest.java
+src/test/resources/
+src/test/
