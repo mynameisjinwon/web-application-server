@@ -13,7 +13,7 @@ public class CreateUserController extends AbstractController {
 
     @Override
     // 회원가입 기능 구현
-    void doPost(HttpRequest request, HttpResponse response) {
+    public void doPost(HttpRequest request, HttpResponse response) {
         String userId = request.getParameter("userId");
         String password = request.getParameter("password");
         String name = request.getParameter("name");
@@ -40,7 +40,7 @@ public class CreateUserController extends AbstractController {
 
     @Override
     // 회원가입 화면을 보여준다.
-    void doGet(HttpRequest request, HttpResponse response) {
+    public void doGet(HttpRequest request, HttpResponse response) {
         response.forward("/user/form.html");
     }
 }

@@ -11,7 +11,7 @@ public class LoginController extends AbstractController {
     private static final Logger log = LoggerFactory.getLogger(LoginController.class);
     @Override
         // 로그인 기능 구현
-    void doPost(HttpRequest request, HttpResponse response) {
+    public void doPost(HttpRequest request, HttpResponse response) {
         String loginUserId = request.getParameter("userId");
         String loginUserPw = request.getParameter("password");
 
@@ -51,7 +51,7 @@ public class LoginController extends AbstractController {
 
     @Override
         // 로그인 화면을 보여준다.
-    void doGet(HttpRequest request, HttpResponse response) {
+    public void doGet(HttpRequest request, HttpResponse response) {
         response.sendRedirect("/user/login.html");
     }
 }

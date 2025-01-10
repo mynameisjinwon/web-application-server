@@ -16,12 +16,12 @@ import java.util.Map;
 public class UserListController extends AbstractController {
     private static final Logger log = LoggerFactory.getLogger(UserListController.class);
     @Override
-    void doPost(HttpRequest request, HttpResponse response) {
+    public void doPost(HttpRequest request, HttpResponse response) {
         log.error("이게 호출되면 안됩니다.");
     }
 
     @Override
-    void doGet(HttpRequest request, HttpResponse response) {
+    public void doGet(HttpRequest request, HttpResponse response) {
         if (isLogined(request)) {
             log.debug("logined = true");
             response.responseBody(getUserListTable());
@@ -31,15 +31,12 @@ public class UserListController extends AbstractController {
     }
 
     private boolean isLogined(HttpRequest request) {
-        boolean isLogined = false;
-        String cookies = request.getHeader("Cookie");
-        if (cookies != null) {
-            Map<String, String> cookieMap = HttpRequestUtils.parseCookies(cookies);
-            if (cookieMap.containsKey("logined")) {
-                isLogined = Boolean.parseBoolean(cookieMap.get("logined"));
-            }
+        try {
+            return Boolean.parseBoolean(request.getCookieValue("logined"));
+        } catch (NullPointerException e) {
+            log.error(e.getMessage());
+            return false;
         }
-        return isLogined;
     }
 
     private byte[] getUserListTable() {
@@ -49,6 +46,9 @@ public class UserListController extends AbstractController {
             sb.append("<table border=1>");
             for (User user : users) {
                 sb.append("<tr>");
+//                sb.append("<td>" + user.getUserId() + "</td>");
+//                sb.append("<td>" + user.getName() + "</td>");
+//                sb.append("<td>" + user.getEmail() + "</td>");
                 sb.append("<td>" + URLDecoder.decode(user.getUserId(), "utf-8") + "</td>");
                 sb.append("<td>" + URLDecoder.decode(user.getName(), "utf-8") + "</td>");
                 sb.append("<td>" + URLDecoder.decode(user.getEmail(), "utf-8") + "</td>");
@@ -57,7 +57,7 @@ public class UserListController extends AbstractController {
             sb.append("</table>");
 
             return sb.toString().getBytes();
-        } catch (UnsupportedEncodingException e) {
+        } catch (Exception e) {
             log.error(e.getMessage());
             return null;
         }

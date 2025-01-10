@@ -44,7 +44,7 @@ public class RequestHandler extends Thread {
             response = new HttpResponse(out);
 
             String url = request.getPath();
-            String method = request.getMethod();
+//            String method = request.getMethod();
 
 //            Map<String, String> headerMap = new HashMap<>();
 //            String line;
@@ -54,32 +54,27 @@ public class RequestHandler extends Thread {
 //                headerMap.put(tokens[0], tokens[1].trim());
 //            }
 
-            Map<String, Controller> controllerMap = new HashMap<>();
-            controllerMap.put("/user/create", new CreateUserController());
-            controllerMap.put("/user/login", new LoginController());
-            controllerMap.put("/user/list", new UserListController());
-
             if ("/".equals(url)) {
                 log.debug("url : {} redirect to /index.html!", url);
                 response.sendRedirect("/index.html");
                 return;
             }
+//
+//            if (url.endsWith("logout")) {
+//                log.debug("로그아웃한다이다");
+//                response.addHeader("Set-Cookie", "logined=false;Path=/");
+//                response.sendRedirect("/index.html");
+//                return;
+//            }
 
-            if (url.endsWith("logout")) {
-                log.debug("로그아웃한다이다");
-                response.addHeader("Set-Cookie", "logined=false;Path=/");
-                response.sendRedirect("/index.html");
-                return;
-            }
-
-            if (controllerMap.get(url) == null) {
+            if (RequestMapper.getController(url) == null) {
                 log.debug("no controllers were called, url : {}", url);
                 response.forward(url);
                 return;
             }
 
-            log.debug("controller is called : {}", controllerMap.get(url));
-            controllerMap.get(url).service(request, response);
+            log.debug("controller is called : {}", RequestMapper.getController(url));
+            RequestMapper.getController(url).service(request, response);
 /*
             Boolean isLogined = false;
             if (request.getHeader("Cookie") != null) {
